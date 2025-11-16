@@ -21,6 +21,18 @@ const (
 	modeChat
 )
 
+type formField int
+
+const (
+	fieldName formField = iota
+	fieldAddr
+	fieldTLS
+	fieldNick
+	fieldChans
+	fieldSubmit
+	totalFields
+)
+
 func main() {
 	f, _ := os.CreateTemp("", "zuse.log")
 	log.SetOutput(f)
