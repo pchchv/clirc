@@ -136,6 +136,30 @@ func (m model) addListItem(it serverEntry) model {
 	return m
 }
 
+func (m *model) calcListHeight(avail int) int {
+	n := listLen(m.serverList)
+	if n == 0 {
+		n = 1
+	}
+
+	h := n*m.rowH + 1 // +1 small padding
+	if h > avail {
+		h = avail
+	}
+
+	// Ensure at least enough for one item
+	if h < m.rowH+1 {
+		h = m.rowH + 1
+	}
+
+	return h
+}
+
+func (m *model) resizeList() {
+	h := m.calcListHeight(m.height - 6)
+	m.serverList.SetSize(m.leftWidth-4, h)
+}
+
 func listLen(l list.Model) int {
 	return len(l.Items())
 }
