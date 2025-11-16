@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lrstanley/girc"
 )
 
@@ -108,6 +109,31 @@ type model struct {
 	chatVP      viewport.Model
 	chatInput   textinput.Model
 	ready       bool
+}
+
+func (m model) Init() tea.Cmd {
+	m.formInputs[m.formSel].Focus()
+	return textinput.Blink
+}
+
+func (m model) addListItem(it serverEntry) model {
+	var items []list.Item
+	for _, existing := range m.serverList.Items() {
+		if _, ok := existing.(addServerItem); ok {
+			continue // skip placeholder, append later
+		}
+
+		se, ok := existing.(serverEntry)
+		if ok && se.id == it.id && se.channel == it.channel {
+			return m
+		}
+
+		items = append(items, existing)
+	}
+
+	items = append(append(items, it), addServerItem{})
+	m.serverList.SetItems(items)
+	return m
 }
 
 func main() {
