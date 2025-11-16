@@ -33,6 +33,12 @@ const (
 	totalFields
 )
 
+type ircChanLineMsg struct {
+	id      serverID
+	channel string
+	line    string
+}
+
 func main() {
 	f, _ := os.CreateTemp("", "zuse.log")
 	log.SetOutput(f)
