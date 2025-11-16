@@ -136,6 +136,10 @@ func (m model) addListItem(it serverEntry) model {
 	return m
 }
 
+func listLen(l list.Model) int {
+	return len(l.Items())
+}
+
 func main() {
 	f, _ := os.CreateTemp("", "zuse.log")
 	log.SetOutput(f)
