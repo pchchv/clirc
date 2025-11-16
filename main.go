@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+type serverID int
+
 type pane int
 
 const (
