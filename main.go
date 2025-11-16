@@ -12,6 +12,13 @@ const (
 	paneRight
 )
 
+type rightMode int
+
+const (
+	modeForm rightMode = iota
+	modeChat
+)
+
 func main() {
 	f, _ := os.CreateTemp("", "zuse.log")
 	log.SetOutput(f)
