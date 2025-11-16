@@ -65,6 +65,14 @@ func (s serverEntry) Title() string {
 	return s.name
 }
 
+func (s serverEntry) Description() string {
+	return s.address
+}
+
+func (s serverEntry) FilterValue() string {
+	return s.name + " " + s.address
+}
+
 func main() {
 	f, _ := os.CreateTemp("", "zuse.log")
 	log.SetOutput(f)
