@@ -76,6 +76,8 @@ func (s serverEntry) FilterValue() string {
 	return s.name + " " + s.address
 }
 
+type addServerItem struct{}
+
 type model struct {
 	width       int
 	height      int
