@@ -78,6 +78,18 @@ func (s serverEntry) FilterValue() string {
 
 type addServerItem struct{}
 
+func (addServerItem) Title() string {
+	return "+ Add New Server"
+}
+
+func (addServerItem) Description() string {
+	return ""
+}
+
+func (addServerItem) FilterValue() string {
+	return ""
+}
+
 type model struct {
 	width       int
 	height      int
