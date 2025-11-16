@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lrstanley/girc"
+	"github.com/muesli/reflow/wordwrap"
 )
 
 type serverID int
@@ -158,6 +160,61 @@ func (m *model) calcListHeight(avail int) int {
 func (m *model) resizeList() {
 	h := m.calcListHeight(m.height - 6)
 	m.serverList.SetSize(m.leftWidth-4, h)
+}
+
+func (m *model) refreshChat() {
+	if m.activeID == 0 {
+		return
+	}
+
+	s := m.servers[m.activeID]
+	if s == nil {
+		return
+	}
+
+	w := m.chatVP.Width
+	if w <= 0 {
+		w = 80
+	}
+
+	var logs []string
+	if s.channelLogs != nil {
+		logs = s.channelLogs[m.activeChan]
+	}
+
+	var b strings.Builder
+	for _, ln := range logs {
+		b.WriteString(wordwrap.String(ln, w) + "\n")
+	}
+
+	m.chatVP.SetContent(b.String())
+	m.chatVP.GotoBottom()
+}
+
+func (m *model) applyChanLine(msg ircChanLineMsg) {
+	if !m.ready {
+		if s := m.servers[msg.id]; s != nil {
+			s.queued = append(s.queued, msg)
+		}
+
+		return
+	}
+
+	if s, ok := m.servers[msg.id]; ok {
+		if s.channelLogs == nil {
+			s.channelLogs = make(map[string][]string)
+		}
+
+		ch := msg.channel
+		if ch == "" {
+			ch = "_sys"
+		}
+
+		s.channelLogs[ch] = append(s.channelLogs[ch], msg.line)
+		if m.mode == modeChat && m.activeID == msg.id && m.activeChan == ch {
+			m.refreshChat()
+		}
+	}
 }
 
 func listLen(l list.Model) int {
