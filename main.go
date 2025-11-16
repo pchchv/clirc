@@ -10,9 +10,12 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/lrstanley/girc"
 	"github.com/muesli/reflow/wordwrap"
 )
+
+var styleDim = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 
 type serverID int
 
@@ -214,6 +217,42 @@ func (m *model) applyChanLine(msg ircChanLineMsg) {
 		if m.mode == modeChat && m.activeID == msg.id && m.activeChan == ch {
 			m.refreshChat()
 		}
+	}
+}
+
+func (m *model) focusFormField(idx formField) tea.Cmd {
+	if idx < 0 {
+		idx = 0
+	}
+
+	if idx >= totalFields {
+		idx = totalFields - 1
+	}
+
+	if m.formSel != fieldSubmit {
+		m.formInputs[m.formSel].Blur()
+	}
+
+	m.formSel = idx
+	if m.formSel != fieldSubmit {
+		m.formInputs[m.formSel].Focus()
+		return textinput.Blink
+	}
+
+	return nil
+}
+
+func (m *model) pushSysLine(id serverID, ch, txt string) {
+	if s := m.servers[id]; s != nil {
+		if s.channelLogs == nil {
+			s.channelLogs = make(map[string][]string)
+		}
+
+		if ch == "" {
+			ch = "_sys"
+		}
+
+		s.channelLogs[ch] = append(s.channelLogs[ch], styleDim.Render(txt))
 	}
 }
 
