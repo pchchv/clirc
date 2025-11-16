@@ -5,6 +5,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/lrstanley/girc"
 )
 
@@ -71,6 +74,26 @@ func (s serverEntry) Description() string {
 
 func (s serverEntry) FilterValue() string {
 	return s.name + " " + s.address
+}
+
+type model struct {
+	width       int
+	height      int
+	rowH        int // rows per item (delegate height + spacing)
+	leftWidth   int
+	headerLines int
+	focus       pane
+	mode        rightMode
+	serverList  list.Model
+	servers     map[serverID]*serverEntry
+	nextID      serverID
+	formInputs  [totalFields]textinput.Model
+	formSel     formField
+	activeID    serverID
+	activeChan  string
+	chatVP      viewport.Model
+	chatInput   textinput.Model
+	ready       bool
 }
 
 func main() {
