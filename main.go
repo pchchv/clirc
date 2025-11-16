@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -54,6 +55,14 @@ type serverEntry struct {
 	client      *girc.Client
 	connected   bool
 	queued      []ircChanLineMsg // buffered until UI sized
+}
+
+func (s serverEntry) Title() string {
+	if s.channel != "" {
+		return fmt.Sprintf("%s · %s", s.name, s.channel)
+	}
+
+	return s.name
 }
 
 func main() {
