@@ -297,7 +297,7 @@ func (m *model) formConfig() (formCfg, error) {
 		return formCfg{}, fmt.Errorf("name and address required")
 	}
 
-	tlsStr := strings.ToLower(get(m, fieldTLS))
+	tlsStr := strings.ToLower(getTextInput(m, fieldTLS))
 	tls := tlsStr == "true" || tlsStr == "1" || tlsStr == "yes"
 	nick := getTextInput(m, fieldNick)
 	if nick == "" {
