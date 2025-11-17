@@ -290,6 +290,33 @@ func (m *model) blurRight() {
 	}
 }
 
+func (m *model) formConfig() (formCfg, error) {
+	name := getTextInput(m, fieldName)
+	addr := getTextInput(m, fieldAddr)
+	if name == "" || addr == "" {
+		return formCfg{}, fmt.Errorf("name and address required")
+	}
+
+	tlsStr := strings.ToLower(get(m, fieldTLS))
+	tls := tlsStr == "true" || tlsStr == "1" || tlsStr == "yes"
+	nick := getTextInput(m, fieldNick)
+	if nick == "" {
+		nick = "zuse"
+	}
+
+	var chans []string
+	if c := getTextInput(m, fieldChans); c != "" {
+		for _, ch := range strings.Split(c, ",") {
+			ch = strings.TrimSpace(ch)
+			if ch != "" {
+				chans = append(chans, ch)
+			}
+		}
+	}
+
+	return formCfg{name, addr, nick, tls, chans}, nil
+}
+
 func listLen(l list.Model) int {
 	return len(l.Items())
 }
