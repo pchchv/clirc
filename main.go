@@ -317,6 +317,46 @@ func (m *model) formConfig() (formCfg, error) {
 	return formCfg{name, addr, nick, tls, chans}, nil
 }
 
+func (m *model) clearForm() {
+	for i := range m.formInputs {
+		m.formInputs[i].SetValue("")
+		m.formInputs[i].Blur()
+	}
+
+	m.formSel = fieldName
+	m.formInputs[m.formSel].Focus()
+}
+
+func (m *model) injectASCIIArt(id serverID) {
+	ascii := styleDim.Render(`
+     ______     __         __     ______     ______    
+    /\  ___\   /\ \       /\ \   /\  == \   /\  ___\   
+    \ \ \____  \ \ \____  \ \ \  \ \  __<   \ \ \____  
+     \ \_____\  \ \_____\  \ \_\  \ \_\ \_\  \ \_____\ 
+      \/_____/   \/_____/   \/_/   \/_/ /_/   \/_____/ 
+
+	 joining...
+`)
+
+	s := m.servers[id]
+	if s.channelLogs == nil {
+		s.channelLogs = make(map[string][]string)
+	}
+
+	// Add to system log
+	s.channelLogs["_sys"] = append(s.channelLogs["_sys"], ascii)
+
+	// Add to all known channels
+	for _, ch := range s.channels {
+		s.channelLogs[ch] = append(s.channelLogs[ch], ascii)
+	}
+
+	// Refresh if we're viewing this server now
+	if m.mode == modeChat && m.activeID == id {
+		m.refreshChat()
+	}
+}
+
 func listLen(l list.Model) int {
 	return len(l.Items())
 }
