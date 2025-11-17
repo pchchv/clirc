@@ -28,6 +28,10 @@ var (
 
 type serverID int
 
+type errMsg error
+
+type connectedMsg serverID
+
 type pane int
 
 const (
