@@ -294,6 +294,10 @@ func listLen(l list.Model) int {
 	return len(l.Items())
 }
 
+func get(m *model, f formField) string {
+	return strings.TrimSpace(m.formInputs[f].Value())
+}
+
 func main() {
 	f, _ := os.CreateTemp("", "zuse.log")
 	log.SetOutput(f)
