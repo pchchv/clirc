@@ -16,6 +16,9 @@ import (
 )
 
 var (
+	state   model
+	program *tea.Program
+
 	pink       = lipgloss.Color("#DB2777")
 	darkPink   = lipgloss.Color("#ac215f")
 	stylePink  = lipgloss.NewStyle().Foreground(pink)
@@ -433,5 +436,6 @@ func main() {
 	f, _ := os.CreateTemp("", "zuse.log")
 	log.SetOutput(f)
 
-	_ = initialModel()
+	state = initialModel()
+	program = tea.NewProgram(state, tea.WithAltScreen())
 }
