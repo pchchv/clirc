@@ -256,6 +256,32 @@ func (m *model) pushSysLine(id serverID, ch, txt string) {
 	}
 }
 
+func (m *model) focusRight() {
+	switch m.mode {
+	case modeChat:
+		m.chatInput.Focus()
+	case modeForm:
+		for i := range m.formInputs {
+			m.formInputs[i].Blur()
+		}
+
+		if m.formSel != fieldSubmit {
+			m.formInputs[m.formSel].Focus()
+		}
+	}
+}
+
+func (m *model) blurRight() {
+	switch m.mode {
+	case modeChat:
+		m.chatInput.Blur()
+	case modeForm:
+		for i := range m.formInputs {
+			m.formInputs[i].Blur()
+		}
+	}
+}
+
 func listLen(l list.Model) int {
 	return len(l.Items())
 }
