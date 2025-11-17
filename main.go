@@ -15,7 +15,13 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 )
 
-var styleDim = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
+var (
+	pink       = lipgloss.Color("#DB2777")
+	darkPink   = lipgloss.Color("#ac215f")
+	stylePink  = lipgloss.NewStyle().Foreground(pink)
+	stylePinkB = stylePink.Bold(true)
+	styleDim   = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
+)
 
 type serverID int
 
@@ -365,7 +371,67 @@ func getTextInput(m *model, f formField) string {
 	return strings.TrimSpace(m.formInputs[f].Value())
 }
 
+func initialModel() model {
+	delegate := list.NewDefaultDelegate()
+	delegate.ShowDescription = true
+
+	// Unselected state
+	delegate.Styles.NormalTitle = stylePink
+	delegate.Styles.NormalDesc = styleDim
+
+	// Selected state (black text on pink background)
+	selectedStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#000000")). // Black text
+		Background(darkPink).                  // Pink background
+		Bold(true)
+
+	delegate.Styles.SelectedTitle = selectedStyle
+	delegate.Styles.SelectedDesc = selectedStyle
+
+	l := list.New([]list.Item{addServerItem{}}, delegate, 20, 10)
+	l.SetShowTitle(false)
+	l.SetShowHelp(false)
+	l.SetFilteringEnabled(false)
+	l.SetShowPagination(false)
+	l.SetShowStatusBar(false)
+
+	rowH := delegate.Height() + delegate.Spacing()
+	newTI := func(ph string) textinput.Model {
+		ti := textinput.New()
+		ti.Placeholder = ph
+		ti.Prompt = stylePinkB.Render(" > ")
+		ti.TextStyle = stylePink
+		return ti
+	}
+
+	var inputs [totalFields]textinput.Model
+	inputs[fieldName] = newTI("Friendly name (e.g. Rekt)")
+	inputs[fieldAddr] = newTI("irc.example.net:6697")
+	inputs[fieldTLS] = newTI("TLS? (true/false)")
+	inputs[fieldNick] = newTI("MySuperNickname")
+	inputs[fieldChans] = newTI("#chan1,#chan2")
+
+	ci := textinput.New()
+	ci.Prompt = stylePinkB.Render("> ")
+	ci.TextStyle = stylePink
+	ci.Placeholder = "Type message or /command…"
+
+	return model{
+		leftWidth:  24,
+		focus:      paneRight,
+		mode:       modeForm,
+		serverList: l,
+		rowH:       rowH,
+		servers:    map[serverID]*serverEntry{},
+		nextID:     1,
+		formInputs: inputs,
+		chatInput:  ci,
+	}
+}
+
 func main() {
 	f, _ := os.CreateTemp("", "zuse.log")
 	log.SetOutput(f)
+
+	_ = initialModel()
 }
