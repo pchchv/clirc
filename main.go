@@ -51,6 +51,14 @@ type ircChanLineMsg struct {
 	line    string
 }
 
+type formCfg struct {
+	Name    string
+	Nick    string
+	Address string
+	TLS     bool
+	Chans   []string
+}
+
 type serverEntry struct {
 	id          serverID
 	tls         bool
