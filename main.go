@@ -170,6 +170,96 @@ func (m model) addListItem(it serverEntry) model {
 	return m
 }
 
+func (m model) updateServersPane(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "enter":
+		if listLen(m.serverList) == 0 {
+			return m, nil
+		}
+
+		switch selected := m.serverList.SelectedItem().(type) {
+		case serverEntry:
+			m.activeID = selected.id
+			if selected.channel != "" {
+				m.activeChan = selected.channel
+			} else {
+				m.activeChan = "_sys"
+			}
+
+			var cmds []tea.Cmd
+			s := m.servers[selected.id]
+			if s.client == nil || !s.connected {
+				cmds = append(cmds, connectServerCmd(selected.id))
+			} else if selected.channel != "" && !s.joined[selected.channel] {
+				s.client.Cmd.Join(selected.channel)
+				if s.joined == nil {
+					s.joined = map[string]bool{}
+				}
+				s.joined[selected.channel] = true
+			}
+
+			m.mode = modeChat
+			m.focus = paneRight
+			m.focusRight()
+			m.refreshChat()
+			return m, tea.Batch(cmds...)
+		case addServerItem:
+			m.mode = modeForm
+			m.focus = paneRight
+			m.clearForm()
+			m.focusRight()
+			return m, nil
+		}
+	case "a": // shortcut to add
+		m.mode = modeForm
+		m.focus = paneRight
+		m.clearForm()
+		m.focusRight()
+		return m, nil
+	case "d": // delete selected server entry
+		if listLen(m.serverList) == 0 {
+			return m, nil
+		}
+
+		switch item := m.serverList.SelectedItem().(type) {
+		case serverEntry:
+			id := item.id
+			if s, ok := m.servers[id]; ok && s.client != nil {
+				s.client.Quit("bye")
+				s.client.Close()
+			}
+			delete(m.servers, id)
+
+			var remaining []list.Item
+			for _, it := range m.serverList.Items() {
+				switch e := it.(type) {
+				case serverEntry:
+					if e.id != id {
+						remaining = append(remaining, e)
+					}
+				case addServerItem:
+					// re-add after loop
+				}
+			}
+			remaining = append(remaining, addServerItem{})
+			m.serverList.SetItems(remaining)
+			m.resizeList()
+
+			if m.activeID == id {
+				m.mode = modeForm
+				m.activeID = 0
+				m.activeChan = ""
+			}
+
+			return m, nil
+		}
+	}
+
+	var cmd tea.Cmd
+	m.serverList, cmd = m.serverList.Update(key)
+	return m, cmd
+}
+
 func (m *model) calcListHeight(avail int) int {
 	n := listLen(m.serverList)
 	if n == 0 {
