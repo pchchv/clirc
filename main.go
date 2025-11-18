@@ -717,6 +717,22 @@ func dispatchTarget(s *serverEntry, target string) string {
 	return "_sys"
 }
 
+func sendChanLineCmd(id serverID, ch, line string) tea.Cmd {
+	return func() tea.Msg {
+		return ircChanLineMsg{
+			id:      id,
+			channel: ch,
+			line:    line,
+		}
+	}
+}
+
+func addListItemCmd(it serverEntry) tea.Cmd {
+	return func() tea.Msg {
+		return addListItemMsg{item: it}
+	}
+}
+
 func initialModel() model {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
