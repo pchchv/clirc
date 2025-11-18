@@ -801,6 +801,15 @@ func addListItemCmd(it serverEntry) tea.Cmd {
 	}
 }
 
+func contains(sl []string, s string) bool {
+	for _, v := range sl {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 func initialModel() model {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
