@@ -58,6 +58,11 @@ const (
 	totalFields
 )
 
+type disconnectedMsg struct {
+	id  serverID
+	err error
+}
+
 type ircChanLineMsg struct {
 	id      serverID
 	channel string
