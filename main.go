@@ -388,8 +388,8 @@ func initialModel() model {
 
 	// Selected state (black text on pink background)
 	selectedStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#000000")). // Black text
-		Background(darkPink).                  // Pink background
+		Foreground(lipgloss.Color("#000000")). // black text
+		Background(darkPink).                  // pink background
 		Bold(true)
 
 	delegate.Styles.SelectedTitle = selectedStyle
