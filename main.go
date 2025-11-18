@@ -328,6 +328,86 @@ func (m model) updateForm(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m model) handleSlash(s *serverEntry, raw string) tea.Cmd {
+	var arg string
+	parts := strings.SplitN(strings.TrimPrefix(raw, "/"), " ", 2)
+	if len(parts) == 2 {
+		arg = parts[1]
+	}
+
+	logSys := func(t string) {
+		m.pushSysLine(s.id, m.activeChan, t)
+		m.refreshChat()
+	}
+
+	cmd := strings.ToLower(parts[0])
+	switch cmd {
+	case "join":
+		if arg == "" {
+			logSys("usage: /join #chan")
+			return nil
+		}
+
+		if s.client != nil && s.connected {
+			s.client.Cmd.Join(arg)
+		}
+
+		if !contains(s.channels, arg) {
+			s.channels = append(s.channels, arg)
+		}
+
+		if s.joined == nil {
+			s.joined = map[string]bool{}
+		}
+
+		s.joined[arg] = true
+
+		// inject ASCII for the new channel too
+		ascii := styleDim.Render("─── Chat initialized ───")
+		s.channelLogs[arg] = append(s.channelLogs[arg], ascii)
+
+		logSys("-- joined " + arg + " --")
+
+		copy := *s
+		copy.channel = arg
+		return addListItemCmd(copy)
+	case "nick":
+		if arg == "" {
+			logSys("usage: /nick newnick")
+			return nil
+		}
+
+		if s.client != nil {
+			s.client.Cmd.Nick(arg)
+		}
+
+		logSys("-- nick change requested: " + arg)
+		return nil
+	case "quit":
+		if s.client != nil {
+			s.client.Quit("bye")
+		}
+		return nil
+	case "msg":
+		p := strings.SplitN(arg, " ", 2)
+		if len(p) < 2 {
+			logSys("usage: /msg target text")
+			return nil
+		}
+
+		target, text := p[0], p[1]
+		if s.client != nil {
+			s.client.Cmd.Message(target, text)
+		}
+
+		logSys(fmt.Sprintf("[to %s] %s", target, text))
+		return nil
+	default:
+		logSys("unknown command: " + cmd)
+		return nil
+	}
+}
+
 func (m *model) calcListHeight(avail int) int {
 	n := listLen(m.serverList)
 	if n == 0 {
