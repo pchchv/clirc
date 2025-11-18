@@ -26,29 +26,13 @@ var (
 	styleDim   = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 )
 
-type serverID int
-
-type errMsg error
-
-type connectedMsg serverID
-
-type pane int
-
 const (
 	paneServers pane = iota
 	paneRight
-)
 
-type rightMode int
-
-const (
 	modeForm rightMode = iota
 	modeChat
-)
 
-type formField int
-
-const (
 	fieldName formField = iota
 	fieldAddr
 	fieldTLS
@@ -57,6 +41,18 @@ const (
 	fieldSubmit
 	totalFields
 )
+
+type pane int
+
+type rightMode int
+
+type formField int
+
+type errMsg error
+
+type serverID int
+
+type connectedMsg serverID
 
 type disconnectedMsg struct {
 	id  serverID
