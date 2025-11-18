@@ -383,6 +383,14 @@ func getTextInput(m *model, f formField) string {
 	return strings.TrimSpace(m.formInputs[f].Value())
 }
 
+// Helper: decide log target.
+func dispatchTarget(s *serverEntry, target string) string {
+	if strings.HasPrefix(target, "#") {
+		return target
+	}
+	return "_sys"
+}
+
 func initialModel() model {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
