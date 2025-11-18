@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -372,6 +375,239 @@ func (m *model) injectASCIIArt(id serverID) {
 	// Refresh if we're viewing this server now
 	if m.mode == modeChat && m.activeID == id {
 		m.refreshChat()
+	}
+}
+
+func connectServerCmd(id serverID) tea.Cmd {
+	return func() tea.Msg {
+		s := state.servers[id]
+		if s == nil {
+			return errMsg(fmt.Errorf("server not found"))
+		}
+
+		host, portStr, err := net.SplitHostPort(s.address)
+		if err != nil {
+			return errMsg(fmt.Errorf("invalid server address: %w", err))
+		}
+
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return errMsg(fmt.Errorf("invalid port: %w", err))
+		}
+
+		cfg := girc.Config{
+			Server: host,
+			Port:   port,
+			Nick:   s.nick,
+			User:   s.nick,
+			Name:   s.nick,
+			SSL:    s.tls,
+		}
+		c := girc.New(cfg)
+
+		// Connected / Disconnected
+		c.Handlers.Add(girc.CONNECTED, func(cl *girc.Client, _ girc.Event) {
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: styleDim.Render("-- connected to " + s.address + " --")})
+			for _, ch := range s.channels {
+				cl.Cmd.Join(ch)
+			}
+			program.Send(connectedMsg(id))
+		})
+		c.Handlers.Add(girc.DISCONNECTED, func(cl *girc.Client, _ girc.Event) {
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: styleDim.Render("-- disconnected --")})
+			program.Send(disconnectedMsg{id: id, err: nil})
+		})
+
+		// PRIVMSG
+		c.Handlers.Add(girc.PRIVMSG, func(_ *girc.Client, e girc.Event) {
+			if len(e.Params) < 2 {
+				return
+			}
+
+			target := e.Params[0]
+			text := e.Params[1]
+			ch := dispatchTarget(s, target)
+			line := stylePink.Render(
+				fmt.Sprintf("[%s] <%s> %s", time.Now().Format("15:04"), e.Source.Name, text),
+			)
+			program.Send(ircChanLineMsg{id: id, channel: ch, line: line})
+			if ch != "_sys" {
+				program.Send(ircChanLineMsg{id: id, channel: "_sys", line: line})
+			}
+		})
+
+		// ACTION (/me)
+		c.Handlers.Add(girc.CTCP_ACTION, func(_ *girc.Client, e girc.Event) {
+			if len(e.Params) < 2 {
+				return
+			}
+
+			target := e.Params[0]
+			text := e.Params[1]
+			ch := dispatchTarget(s, target)
+			line := fmt.Sprintf("[%s] * %s %s", time.Now().Format("15:04"), e.Source.Name, text)
+			program.Send(ircChanLineMsg{id: id, channel: ch, line: styleDim.Render(line)})
+			if ch != "_sys" {
+				program.Send(ircChanLineMsg{id: id, channel: "_sys", line: styleDim.Render(line)})
+			}
+		})
+
+		// NOTICE
+		c.Handlers.Add(girc.NOTICE, func(_ *girc.Client, e girc.Event) {
+			if len(e.Params) < 2 {
+				return
+			}
+
+			target := e.Params[0]
+			text := e.Params[1]
+			ch := dispatchTarget(s, target)
+			line := fmt.Sprintf("[%s] -NOTICE- %s", time.Now().Format("15:04"), text)
+			program.Send(ircChanLineMsg{id: id, channel: ch, line: styleDim.Render(line)})
+			if ch != "_sys" {
+				program.Send(ircChanLineMsg{id: id, channel: "_sys", line: styleDim.Render(line)})
+			}
+		})
+
+		// JOIN/PART/QUIT
+		c.Handlers.Add(girc.JOIN, func(_ *girc.Client, e girc.Event) {
+			ch := e.Params[0]
+			line := fmt.Sprintf("[%s] * %s joined %s", time.Now().Format("15:04"), e.Source.Name, ch)
+			program.Send(ircChanLineMsg{id: id, channel: ch, line: styleDim.Render(line)})
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: styleDim.Render(line)})
+			if s.joined == nil {
+				s.joined = map[string]bool{}
+			}
+			s.joined[ch] = true
+		})
+		c.Handlers.Add(girc.PART, func(_ *girc.Client, e girc.Event) {
+			ch := e.Params[0]
+			line := fmt.Sprintf("[%s] * %s left %s", time.Now().Format("15:04"), e.Source.Name, ch)
+			program.Send(ircChanLineMsg{id: id, channel: ch, line: styleDim.Render(line)})
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: styleDim.Render(line)})
+		})
+		c.Handlers.Add(girc.QUIT, func(_ *girc.Client, e girc.Event) {
+			line := fmt.Sprintf("[%s] * %s quit", time.Now().Format("15:04"), e.Source.Name)
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: styleDim.Render(line)})
+		})
+
+		// Topic & Names
+		c.Handlers.Add(girc.RPL_TOPIC, func(_ *girc.Client, e girc.Event) {
+			if len(e.Params) < 3 {
+				return
+			}
+
+			ch := e.Params[1]
+			topic := e.Params[2]
+			line := styleDim.Render("— topic: " + topic)
+			program.Send(ircChanLineMsg{id: id, channel: ch, line: line})
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: line})
+		})
+		c.Handlers.Add(girc.RPL_TOPICWHOTIME, func(_ *girc.Client, e girc.Event) {
+			if len(e.Params) < 4 {
+				return
+			}
+
+			ch := e.Params[1]
+			who := e.Params[2]
+			ts := e.Params[3]
+			line := styleDim.Render("— set by " + who + " @ " + ts)
+			program.Send(ircChanLineMsg{id: id, channel: ch, line: line})
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: line})
+		})
+		c.Handlers.Add(girc.RPL_NAMREPLY, func(_ *girc.Client, e girc.Event) {
+			// ignored or custom
+		})
+		c.Handlers.Add(girc.RPL_ENDOFNAMES, func(_ *girc.Client, e girc.Event) {
+			if len(e.Params) < 2 {
+				return
+			}
+			ch := e.Params[1]
+			line := styleDim.Render("— end of names")
+			program.Send(ircChanLineMsg{id: id, channel: ch, line: line})
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: line})
+		})
+
+		const RPL_STATSCONN = "250"
+		for _, ev := range []string{
+			girc.RPL_WELCOME,
+			girc.RPL_YOURHOST,
+			girc.RPL_CREATED,
+			girc.RPL_MYINFO,
+			girc.RPL_ISUPPORT,
+			girc.RPL_BOUNCE,
+			girc.RPL_LUSERCLIENT,
+			girc.RPL_LUSEROP,
+			girc.RPL_LUSERUNKNOWN,
+			RPL_STATSCONN,
+			girc.RPL_LOCALUSERS,
+			girc.RPL_GLOBALUSERS,
+			girc.RPL_MOTDSTART,
+			girc.RPL_MOTD,
+			girc.RPL_ENDOFMOTD,
+			girc.ERR_NOMOTD,
+		} {
+			evCopy := ev
+			c.Handlers.Add(evCopy, func(_ *girc.Client, e girc.Event) {
+				text := strings.Join(e.Params, " ")
+				line := styleDim.Render(fmt.Sprintf("[%s] %s", time.Now().Format("15:04"), text))
+				program.Send(ircChanLineMsg{id: id, channel: "_sys", line: line})
+			})
+		}
+
+		for _, ev := range []string{
+			girc.CAP,
+			girc.AUTHENTICATE,
+			girc.RPL_SASLSUCCESS,
+			girc.ERR_SASLFAIL,
+		} {
+			evCopy := ev
+			c.Handlers.Add(evCopy, func(_ *girc.Client, e girc.Event) {
+				text := strings.Join(e.Params, " ")
+				line := styleDim.Render(fmt.Sprintf("[%s] %s %s", time.Now().Format("15:04"), e.Command, text))
+				program.Send(ircChanLineMsg{id: id, channel: "_sys", line: line})
+			})
+		}
+
+		ignoreNumerics := map[string]bool{
+			"315": true, // RPL_ENDOFWHO
+			"352": true, // RPL_WHOREPLY
+			"354": true, // WHOX reply
+			"b09": true, // custom
+		}
+
+		c.Handlers.Add(girc.ALL_EVENTS, func(_ *girc.Client, e girc.Event) {
+			// is numeric?
+			if _, err := strconv.Atoi(e.Command); err != nil {
+				return
+			}
+
+			if ignoreNumerics[e.Command] {
+				return
+			}
+
+			txt := strings.Join(e.Params, " ")
+			dest := "_sys"
+			for _, p := range e.Params {
+				if strings.HasPrefix(p, "#") {
+					dest = p
+					break
+				}
+			}
+
+			line := styleDim.Render(fmt.Sprintf("[%s] %s", time.Now().Format("15:04"), txt))
+			program.Send(ircChanLineMsg{id: id, channel: dest, line: line})
+			if dest != "_sys" {
+				program.Send(ircChanLineMsg{id: id, channel: "_sys", line: line})
+			}
+		})
+
+		s.client = c
+		if err := c.Connect(); err != nil {
+			program.Send(ircChanLineMsg{id: id, channel: "_sys", line: "Connect error: " + err.Error()})
+			return errMsg(err)
+		}
+
+		return nil
 	}
 }
 
