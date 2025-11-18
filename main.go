@@ -22,11 +22,12 @@ var (
 	state   model
 	program *tea.Program
 
-	pink       = lipgloss.Color("#DB2777")
-	darkPink   = lipgloss.Color("#ac215f")
-	stylePink  = lipgloss.NewStyle().Foreground(pink)
-	stylePinkB = stylePink.Bold(true)
-	styleDim   = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
+	pink          = lipgloss.Color("#DB2777")
+	darkPink      = lipgloss.Color("#ac215f")
+	stylePink     = lipgloss.NewStyle().Foreground(pink)
+	stylePinkB    = stylePink.Bold(true)
+	styleDarkPink = lipgloss.NewStyle().Foreground(lipgloss.Color("#ac215f"))
+	styleDim      = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 )
 
 const (
@@ -259,6 +260,7 @@ func (m model) updateServersPane(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.serverList, cmd = m.serverList.Update(key)
 	return m, cmd
 }
+
 func (m model) updateForm(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case "up":
@@ -326,6 +328,59 @@ func (m model) updateForm(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m model) updateChat(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "up":
+		m.chatVP.ScrollUp(1)
+	case "down":
+		m.chatVP.ScrollDown(1)
+	case "pgup":
+		m.chatVP.HalfPageUp()
+	case "pgdown":
+		m.chatVP.HalfPageDown()
+	case "enter":
+		txt := strings.TrimSpace(m.chatInput.Value())
+		if txt == "" {
+			return m, nil
+		}
+		m.chatInput.SetValue("")
+		s := m.servers[m.activeID]
+
+		if strings.HasPrefix(txt, "/") {
+			return m, m.handleSlash(s, txt)
+		}
+
+		if m.activeChan == "" || m.activeChan == "_sys" {
+			m.pushSysLine(s.id, "_sys", "-- no channel selected, use /join #chan or select an item --")
+			m.refreshChat()
+			return m, nil
+		}
+
+		if s.client != nil {
+			s.client.Cmd.Message(m.activeChan, txt)
+		}
+		line := styleDarkPink.Render(
+			fmt.Sprintf("[%s] <%s> %s", time.Now().Format("15:04"), s.nick, txt),
+		)
+		return m, sendChanLineCmd(s.id, m.activeChan, line)
+	}
+
+	var cmd tea.Cmd
+	m.chatInput, cmd = m.chatInput.Update(key)
+	return m, cmd
+}
+
+func (m model) updateRightPane(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch m.mode {
+	case modeForm:
+		return m.updateForm(key)
+	case modeChat:
+		return m.updateChat(key)
+	default:
+		return m, nil
+	}
 }
 
 func (m model) handleSlash(s *serverEntry, raw string) tea.Cmd {
