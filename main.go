@@ -151,6 +151,98 @@ func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
+		leftInnerW := m.leftWidth - 2
+		rightInnerW := (m.width - m.leftWidth) - 2
+		innerH := m.height - 2
+
+		// resize inputs
+		for i := range m.formInputs {
+			m.formInputs[i].Width = rightInnerW - 4
+		}
+
+		// list height calc
+		listH := m.calcListHeight(innerH - 4)
+		m.serverList.SetSize(leftInnerW-2, listH)
+		m.headerLines = 2
+		chatReserved := m.headerLines + 1 + 1
+		m.chatVP.Width = rightInnerW - 2
+		m.chatVP.Height = innerH - chatReserved - 1
+		m.chatInput.Width = m.chatVP.Width
+		m.ready = true
+		// flush queued
+		for _, s := range m.servers {
+			for _, q := range s.queued {
+				m.applyChanLine(q)
+			}
+			s.queued = nil
+		}
+
+		if m.mode == modeChat && m.activeID != 0 {
+			m.refreshChat()
+		}
+
+		return m, nil
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "esc":
+			return m, tea.Quit
+		case "left":
+			m.focus = paneServers
+			m.blurRight()
+			return m, nil
+		case "right":
+			m.focus = paneRight
+			m.focusRight()
+			return m, nil
+		}
+
+		if m.focus == paneServers {
+			return m.updateServersPane(msg)
+		}
+
+		return m.updateRightPane(msg)
+	case ircChanLineMsg:
+		m.applyChanLine(msg)
+		return m, nil
+	case connectedMsg:
+		if s, ok := m.servers[serverID(msg)]; ok {
+			s.connected = true
+			m.pushSysLine(s.id, "", "-- connected --")
+			if m.mode == modeChat && m.activeID == serverID(msg) {
+				m.refreshChat()
+			}
+		}
+		return m, nil
+	case disconnectedMsg:
+		if s, ok := m.servers[msg.id]; ok {
+			s.connected = false
+			txt := "-- disconnected --"
+			if msg.err != nil {
+				txt += " (" + msg.err.Error() + ")"
+			}
+
+			m.pushSysLine(s.id, "", txt)
+			if m.mode == modeChat && m.activeID == msg.id {
+				m.refreshChat()
+			}
+		}
+		return m, nil
+	case addListItemMsg:
+		m = m.addListItem(msg.item)
+		m.resizeList() // ensure height fits new list
+		return m, nil
+	case errMsg:
+		log.Println("error:", msg)
+		return m, nil
+	}
+
+	return m, nil
+}
+
 func (m model) addListItem(it serverEntry) model {
 	var items []list.Item
 	for _, existing := range m.serverList.Items() {
