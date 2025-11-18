@@ -54,6 +54,10 @@ type serverID int
 
 type connectedMsg serverID
 
+type addListItemMsg struct {
+	item serverEntry
+}
+
 type disconnectedMsg struct {
 	id  serverID
 	err error
