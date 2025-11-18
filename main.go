@@ -30,6 +30,7 @@ var (
 	styleDim      = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 	styleDarkSel  = lipgloss.NewStyle().Foreground(lipgloss.Color("#000")).Background(darkPink)
 	titleStyle    = lipgloss.NewStyle().Background(darkPink).Foreground(lipgloss.Color("#000000")).Bold(true).Padding(0, 1)
+	box           = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(pink)
 )
 
 const (
@@ -243,6 +244,44 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m model) View() string {
+	if !m.ready {
+		return "loading…"
+	}
+
+	topPadding := 2
+	serversTitle := styleDim.Render("Servers List")
+	leftInner := lipgloss.JoinVertical(
+		lipgloss.Left,
+		titleStyle.Render("zuse irc beta"),
+		lipgloss.NewStyle().MarginTop(1).MarginBottom(1).Render(serversTitle),
+		m.serverList.View(),
+	)
+	leftBox := box.Width(m.leftWidth).Height(m.height - topPadding).Render(leftInner)
+
+	var rightInner string
+	switch m.mode {
+	case modeForm:
+		rightInner = m.viewForm()
+	case modeChat:
+		rightInner = m.viewChat()
+	}
+
+	rightBox := box.Width(m.width - m.leftWidth - 4).Height(m.height - topPadding).Render(rightInner)
+	spacer := lipgloss.NewStyle().
+		Width(2).
+		Height(m.height - topPadding).
+		Render(" ")
+	joined := lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox, spacer)
+	topSpacer := lipgloss.NewStyle().
+		Width(m.width).
+		Height(topPadding).
+		Render(strings.Repeat("\n", topPadding))
+	finalView := lipgloss.JoinVertical(lipgloss.Left, topSpacer, joined)
+
+	return lipgloss.Place(m.width, m.height, 0, 0, finalView)
 }
 
 func (m model) addListItem(it serverEntry) model {
