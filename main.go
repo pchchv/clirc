@@ -259,6 +259,74 @@ func (m model) updateServersPane(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.serverList, cmd = m.serverList.Update(key)
 	return m, cmd
 }
+func (m model) updateForm(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "up":
+		if m.formSel > 0 {
+			return m, m.focusFormField(m.formSel - 1)
+		}
+	case "down":
+		if m.formSel < totalFields-1 {
+			return m, m.focusFormField(m.formSel + 1)
+		}
+	case "enter":
+		if m.formSel < fieldSubmit {
+			return m, m.focusFormField(m.formSel + 1)
+		}
+		cfg, err := m.formConfig()
+		if err != nil {
+			m.formInputs[fieldSubmit].SetValue("error: " + err.Error())
+			return m, nil
+		}
+		id := m.nextID
+		m.nextID++
+
+		s := &serverEntry{
+			id:          id,
+			name:        cfg.Name,
+			address:     cfg.Address,
+			tls:         cfg.TLS,
+			nick:        cfg.Nick,
+			channels:    cfg.Chans,
+			channelLogs: make(map[string][]string),
+			joined:      make(map[string]bool),
+		}
+		m.servers[id] = s
+		m.injectASCIIArt(id)
+
+		var cmds []tea.Cmd
+		if len(cfg.Chans) > 0 {
+			for i := len(cfg.Chans) - 1; i >= 0; i-- {
+				ch := cfg.Chans[i]
+				copy := *s
+				copy.channel = ch
+				cmds = append(cmds, addListItemCmd(copy))
+			}
+		} else {
+			cmds = append(cmds, addListItemCmd(*s))
+		}
+
+		m.activeID = id
+		if len(cfg.Chans) > 0 {
+			m.activeChan = cfg.Chans[0]
+		} else {
+			m.activeChan = "_sys"
+		}
+
+		m.mode = modeChat
+		m.focusRight()
+		cmds = append(cmds, connectServerCmd(id), textinput.Blink)
+		return m, tea.Batch(cmds...)
+	}
+
+	if m.formSel != fieldSubmit {
+		var cmd tea.Cmd
+		m.formInputs[m.formSel], cmd = m.formInputs[m.formSel].Update(key)
+		return m, cmd
+	}
+
+	return m, nil
+}
 
 func (m *model) calcListHeight(avail int) int {
 	n := listLen(m.serverList)
