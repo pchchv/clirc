@@ -28,6 +28,8 @@ var (
 	stylePinkB    = stylePink.Bold(true)
 	styleDarkPink = lipgloss.NewStyle().Foreground(lipgloss.Color("#ac215f"))
 	styleDim      = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
+	styleDarkSel  = lipgloss.NewStyle().Foreground(lipgloss.Color("#000")).Background(darkPink)
+	titleStyle    = lipgloss.NewStyle().Background(darkPink).Foreground(lipgloss.Color("#000000")).Bold(true).Padding(0, 1)
 )
 
 const (
@@ -553,6 +555,65 @@ func (m model) handleSlash(s *serverEntry, raw string) tea.Cmd {
 		logSys("unknown command: " + cmd)
 		return nil
 	}
+}
+
+func (m model) viewForm() string {
+	labels := []string{
+		" Custom Server Name ",
+		" Server:Port ",
+		" TLS ",
+		" Nick / Username / Real ",
+		" Channels (comma) ",
+		" SUBMIT ",
+	}
+
+	var b strings.Builder
+	b.WriteString(stylePinkB.Render(" ↈ  Add New IRC Connection") + "\n\n")
+	for i := 0; i < int(totalFields); i++ {
+		label := labels[i]
+		if i == int(m.formSel) && m.focus == paneRight {
+			label = styleDarkSel.Render(label)
+		} else {
+			label = stylePink.Render(label)
+		}
+
+		if i == int(fieldSubmit) {
+			b.WriteString(label + "\n\n")
+		} else {
+			b.WriteString(label + "\n" + m.formInputs[i].View() + "\n\n")
+		}
+	}
+
+	b.WriteString(styleDim.Render("↑/↓ fields · Enter submit · ←/→ panes"))
+	return b.String()
+}
+
+func (m model) viewChat() string {
+	var header strings.Builder
+	title := "Chat"
+	if s, ok := m.servers[m.activeID]; ok {
+		stat := "●"
+		if !s.connected {
+			stat = "○"
+		}
+
+		chanLabel := m.activeChan
+		if chanLabel == "_sys" || chanLabel == "" {
+			chanLabel = "(system)"
+		}
+
+		title = fmt.Sprintf("%s %s (%s) %s", stat, s.name, s.nick, chanLabel)
+	}
+
+	header.WriteString(stylePinkB.Render(title) + "\n")
+	header.WriteString(titleStyle.Render("↑/↓ scroll · ←/→ panes") + "\n")
+	div := stylePink.Render(strings.Repeat("─", m.chatVP.Width))
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		header.String()+m.chatVP.View(),
+		div,
+		m.chatInput.View(),
+	)
 }
 
 func (m *model) calcListHeight(avail int) int {
