@@ -34,15 +34,15 @@ var (
 )
 
 const (
-	paneServers pane = iota
-	paneRight
+	paneRight pane = iota
+	paneServers
 
 	modeForm rightMode = iota
 	modeChat
 
-	fieldName formField = iota
+	fieldTLS formField = iota
+	fieldName
 	fieldAddr
-	fieldTLS
 	fieldNick
 	fieldChans
 	fieldSubmit
@@ -666,7 +666,7 @@ func (m *model) calcListHeight(avail int) int {
 		h = avail
 	}
 
-	// Ensure at least enough for one item
+	// ensure at least enough for one item
 	if h < m.rowH+1 {
 		h = m.rowH + 1
 	}
@@ -841,7 +841,7 @@ func (m *model) injectASCIIArt(id serverID) {
      \ \_____\  \ \_____\  \ \_\  \ \_\ \_\  \ \_____\ 
       \/_____/   \/_____/   \/_/   \/_/ /_/   \/_____/ 
 
-	 joining...
+	joining...
 `)
 
 	s := m.servers[id]
@@ -849,15 +849,15 @@ func (m *model) injectASCIIArt(id serverID) {
 		s.channelLogs = make(map[string][]string)
 	}
 
-	// Add to system log
+	// add to system log
 	s.channelLogs["_sys"] = append(s.channelLogs["_sys"], ascii)
 
-	// Add to all known channels
+	// add to all known channels
 	for _, ch := range s.channels {
 		s.channelLogs[ch] = append(s.channelLogs[ch], ascii)
 	}
 
-	// Refresh if we're viewing this server now
+	// refresh if we're viewing this server now
 	if m.mode == modeChat && m.activeID == id {
 		m.refreshChat()
 	}
@@ -1141,11 +1141,11 @@ func initialModel() model {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 
-	// Unselected state
+	// unselected state
 	delegate.Styles.NormalTitle = stylePink
 	delegate.Styles.NormalDesc = styleDim
 
-	// Selected state (black text on pink background)
+	// selected state (black text on pink background)
 	selectedStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#000000")). // black text
 		Background(darkPink).                  // pink background
