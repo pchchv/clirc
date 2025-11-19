@@ -1201,4 +1201,7 @@ func main() {
 
 	state = initialModel()
 	program = tea.NewProgram(state, tea.WithAltScreen())
+	if _, err := program.Run(); err != nil {
+		fmt.Println("error:", err)
+	}
 }
