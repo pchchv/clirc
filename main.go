@@ -911,7 +911,7 @@ func connectServerCmd(id serverID) tea.Cmd {
 
 			target := e.Params[0]
 			text := e.Params[1]
-			ch := dispatchTarget(s, target)
+			ch := dispatchTarget(target)
 			line := stylePink.Render(
 				fmt.Sprintf("[%s] <%s> %s", time.Now().Format("15:04"), e.Source.Name, text),
 			)
@@ -929,7 +929,7 @@ func connectServerCmd(id serverID) tea.Cmd {
 
 			target := e.Params[0]
 			text := e.Params[1]
-			ch := dispatchTarget(s, target)
+			ch := dispatchTarget(target)
 			line := fmt.Sprintf("[%s] * %s %s", time.Now().Format("15:04"), e.Source.Name, text)
 			program.Send(ircChanLineMsg{id: id, channel: ch, line: styleDim.Render(line)})
 			if ch != "_sys" {
@@ -945,7 +945,7 @@ func connectServerCmd(id serverID) tea.Cmd {
 
 			target := e.Params[0]
 			text := e.Params[1]
-			ch := dispatchTarget(s, target)
+			ch := dispatchTarget(target)
 			line := fmt.Sprintf("[%s] -NOTICE- %s", time.Now().Format("15:04"), text)
 			program.Send(ircChanLineMsg{id: id, channel: ch, line: styleDim.Render(line)})
 			if ch != "_sys" {
@@ -1105,7 +1105,7 @@ func getTextInput(m *model, f formField) string {
 }
 
 // Helper: decide log target.
-func dispatchTarget(s *serverEntry, target string) string {
+func dispatchTarget(target string) string {
 	if strings.HasPrefix(target, "#") {
 		return target
 	}
